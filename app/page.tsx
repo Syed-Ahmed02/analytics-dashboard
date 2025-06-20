@@ -12,7 +12,6 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { Home, Youtube, Globe, DollarSign, MessageSquare } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { HomePage } from "@/components/pages/home-page"
 import { YoutubeStatsPage } from "@/components/pages/youtube-stats-page"
 import { WebpageStatsPage } from "@/components/pages/webpage-stats-page"
@@ -33,7 +32,6 @@ function AppSidebar({ currentPage, setCurrentPage }: { currentPage: string; setC
       <SidebarHeader className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Coaching Dashboard</h2>
-          <ThemeToggle />
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -84,9 +82,6 @@ export default function Dashboard() {
           <div className="p-3 sm:p-4 lg:p-6">
             <div className="mb-3 sm:mb-4 flex items-center justify-between">
               <SidebarTrigger />
-              <div className="md:hidden">
-                <ThemeToggle />
-              </div>
             </div>
             <div className="max-w-full overflow-x-auto scrollbar-thin">{renderPage()}</div>
           </div>

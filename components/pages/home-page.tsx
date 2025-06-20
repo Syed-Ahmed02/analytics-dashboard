@@ -114,7 +114,7 @@ export function HomePage() {
       {/* Key Metrics - Responsive Grid */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lg:gap-6">
         {metrics.map((metric, index) => {
-          const isPositive = Number.parseFloat(metric.change) > 0
+          const isPositive = Number(metric.change) > 0
           const Icon = metric.icon
           return (
             <Card key={index} className="min-w-0 transition-colors hover:bg-accent/50">

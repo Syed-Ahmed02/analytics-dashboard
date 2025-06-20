@@ -67,7 +67,7 @@ export function FunnelChart({ data, title = "Sales Funnel" }: FunnelChartProps) 
                 </div>
 
                 {/* Animated background effect on hover */}
-                {hoveredStage === index && <div className="absolute inset-0 bg-white bg-opacity-10 animate-pulse" />}
+                {hoveredStage === index && <div className="absolute inset-0 bg-white/10 animate-pulse" />}
               </div>
 
               {/* Connection line to next stage */}
