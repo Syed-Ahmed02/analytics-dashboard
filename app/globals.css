@@ -1,26 +1,317 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@theme {
+  --color-background: oklch(100% 0 0);
+  --color-foreground: oklch(9% 0.026 285.75);
+  --color-card: oklch(100% 0 0);
+  --color-card-foreground: oklch(9% 0.026 285.75);
+  --color-popover: oklch(100% 0 0);
+  --color-popover-foreground: oklch(9% 0.026 285.75);
+  --color-primary: oklch(47.78% 0.204 238.02);
+  --color-primary-foreground: oklch(98% 0.013 285.75);
+  --color-secondary: oklch(96.1% 0.0143 285.75);
+  --color-secondary-foreground: oklch(9% 0.026 285.75);
+  --color-muted: oklch(96.1% 0.0143 285.75);
+  --color-muted-foreground: oklch(45.1% 0.0171 285.75);
+  --color-accent: oklch(96.1% 0.0143 285.75);
+  --color-accent-foreground: oklch(9% 0.026 285.75);
+  --color-destructive: oklch(62.8% 0.257 29.23);
+  --color-destructive-foreground: oklch(98% 0.013 285.75);
+  --color-border: oklch(89.8% 0.0143 285.75);
+  --color-input: oklch(89.8% 0.0143 285.75);
+  --color-ring: oklch(47.78% 0.204 238.02);
+  --radius: 0.5rem;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* Chart colors */
+  --color-chart-1: oklch(62% 0.25 29);
+  --color-chart-2: oklch(42% 0.25 173);
+  --color-chart-3: oklch(25% 0.25 197);
+  --color-chart-4: oklch(68% 0.25 43);
+  --color-chart-5: oklch(70% 0.25 27);
+
+  /* Custom theme colors */
+  --color-success: oklch(72% 0.2 142);
+  --color-success-foreground: oklch(98% 0.013 285.75);
+  --color-warning: oklch(84% 0.2 83);
+  --color-warning-foreground: oklch(9% 0.026 285.75);
+  --color-info: oklch(69% 0.2 230);
+  --color-info-foreground: oklch(98% 0.013 285.75);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  @theme {
+    --color-background: oklch(9% 0.026 285.75);
+    --color-foreground: oklch(98% 0.013 285.75);
+    --color-card: oklch(9% 0.026 285.75);
+    --color-card-foreground: oklch(98% 0.013 285.75);
+    --color-popover: oklch(9% 0.026 285.75);
+    --color-popover-foreground: oklch(98% 0.013 285.75);
+    --color-primary: oklch(69.71% 0.329 238.75);
+    --color-primary-foreground: oklch(9% 0.026 285.75);
+    --color-secondary: oklch(17.9% 0.0218 285.75);
+    --color-secondary-foreground: oklch(98% 0.013 285.75);
+    --color-muted: oklch(17.9% 0.0218 285.75);
+    --color-muted-foreground: oklch(63.9% 0.0252 285.75);
+    --color-accent: oklch(17.9% 0.0218 285.75);
+    --color-accent-foreground: oklch(98% 0.013 285.75);
+    --color-destructive: oklch(32% 0.199 29.23);
+    --color-destructive-foreground: oklch(98% 0.013 285.75);
+    --color-border: oklch(17.9% 0.0218 285.75);
+    --color-input: oklch(17.9% 0.0218 285.75);
+    --color-ring: oklch(83.1% 0.194 285.75);
+
+    /* Chart colors for dark mode */
+    --color-chart-1: oklch(50% 0.25 220);
+    --color-chart-2: oklch(45% 0.25 160);
+    --color-chart-3: oklch(55% 0.25 30);
+    --color-chart-4: oklch(60% 0.25 280);
+    --color-chart-5: oklch(55% 0.25 340);
+
+    /* Custom theme colors for dark mode */
+    --color-success: oklch(45% 0.2 142);
+    --color-success-foreground: oklch(98% 0.013 285.75);
+    --color-warning: oklch(55% 0.2 83);
+    --color-warning-foreground: oklch(9% 0.026 285.75);
+    --color-info: oklch(45% 0.2 230);
+    --color-info-foreground: oklch(98% 0.013 285.75);
   }
 }
 
+/* Manual dark mode override */
+.dark {
+  color-scheme: dark;
+
+  --color-background: oklch(9% 0.026 285.75);
+  --color-foreground: oklch(98% 0.013 285.75);
+  --color-card: oklch(9% 0.026 285.75);
+  --color-card-foreground: oklch(98% 0.013 285.75);
+  --color-popover: oklch(9% 0.026 285.75);
+  --color-popover-foreground: oklch(98% 0.013 285.75);
+  --color-primary: oklch(69.71% 0.329 238.75);
+  --color-primary-foreground: oklch(9% 0.026 285.75);
+  --color-secondary: oklch(17.9% 0.0218 285.75);
+  --color-secondary-foreground: oklch(98% 0.013 285.75);
+  --color-muted: oklch(17.9% 0.0218 285.75);
+  --color-muted-foreground: oklch(63.9% 0.0252 285.75);
+  --color-accent: oklch(17.9% 0.0218 285.75);
+  --color-accent-foreground: oklch(98% 0.013 285.75);
+  --color-destructive: oklch(32% 0.199 29.23);
+  --color-destructive-foreground: oklch(98% 0.013 285.75);
+  --color-border: oklch(17.9% 0.0218 285.75);
+  --color-input: oklch(17.9% 0.0218 285.75);
+  --color-ring: oklch(83.1% 0.194 285.75);
+
+  /* Chart colors for dark mode */
+  --color-chart-1: oklch(50% 0.25 220);
+  --color-chart-2: oklch(45% 0.25 160);
+  --color-chart-3: oklch(55% 0.25 30);
+  --color-chart-4: oklch(60% 0.25 280);
+  --color-chart-5: oklch(55% 0.25 340);
+
+  /* Custom theme colors for dark mode */
+  --color-success: oklch(45% 0.2 142);
+  --color-success-foreground: oklch(98% 0.013 285.75);
+  --color-warning: oklch(55% 0.2 83);
+  --color-warning-foreground: oklch(9% 0.026 285.75);
+  --color-info: oklch(45% 0.2 230);
+  --color-info-foreground: oklch(98% 0.013 285.75);
+}
+
+/* Base styles */
+* {
+  border-color: var(--color-border);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Custom scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-muted-foreground) var(--color-muted);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: var(--color-muted);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-muted-foreground);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--color-foreground);
+}
+
+/* Chart specific styles */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--color-border);
+}
+
+.recharts-text {
+  fill: var(--color-muted-foreground);
+}
+
+.recharts-tooltip-wrapper {
+  border-radius: 6px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* Utility classes for gradients and special colors */
+.bg-gradient-blue {
+  background: linear-gradient(to right, oklch(96% 0.02 240), oklch(92% 0.04 240));
+}
+
+.dark .bg-gradient-blue {
+  background: linear-gradient(to right, oklch(15% 0.04 240 / 0.5), oklch(12% 0.06 240 / 0.5));
+}
+
+.bg-gradient-green {
+  background: linear-gradient(to right, oklch(96% 0.02 142), oklch(92% 0.04 142));
+}
+
+.dark .bg-gradient-green {
+  background: linear-gradient(to right, oklch(15% 0.04 142 / 0.5), oklch(12% 0.06 142 / 0.5));
+}
+
+.bg-gradient-purple {
+  background: linear-gradient(to right, oklch(96% 0.02 285), oklch(92% 0.04 285));
+}
+
+.dark .bg-gradient-purple {
+  background: linear-gradient(to right, oklch(15% 0.04 285 / 0.5), oklch(12% 0.06 285 / 0.5));
+}
+
+.bg-gradient-orange {
+  background: linear-gradient(to right, oklch(96% 0.02 60), oklch(92% 0.04 60));
+}
+
+.dark .bg-gradient-orange {
+  background: linear-gradient(to right, oklch(15% 0.04 60 / 0.5), oklch(12% 0.06 60 / 0.5));
+}
+
+/* Performance highlight backgrounds */
+.bg-success-subtle {
+  background-color: oklch(95% 0.02 142);
+  border-color: oklch(85% 0.04 142);
+}
+
+.dark .bg-success-subtle {
+  background-color: oklch(15% 0.04 142 / 0.3);
+  border-color: oklch(25% 0.06 142);
+}
+
+.bg-info-subtle {
+  background-color: oklch(95% 0.02 240);
+  border-color: oklch(85% 0.04 240);
+}
+
+.dark .bg-info-subtle {
+  background-color: oklch(15% 0.04 240 / 0.3);
+  border-color: oklch(25% 0.06 240);
+}
+
+.bg-warning-subtle {
+  background-color: oklch(95% 0.02 60);
+  border-color: oklch(85% 0.04 60);
+}
+
+.dark .bg-warning-subtle {
+  background-color: oklch(15% 0.04 60 / 0.3);
+  border-color: oklch(25% 0.06 60);
+}
+
+.bg-purple-subtle {
+  background-color: oklch(95% 0.02 285);
+  border-color: oklch(85% 0.04 285);
+}
+
+.dark .bg-purple-subtle {
+  background-color: oklch(15% 0.04 285 / 0.3);
+  border-color: oklch(25% 0.06 285);
+}
+
+/* Badge colors */
+.badge-success {
+  background-color: oklch(90% 0.04 142);
+  color: oklch(25% 0.08 142);
+}
+
+.dark .badge-success {
+  background-color: oklch(25% 0.06 142 / 0.5);
+  color: oklch(75% 0.06 142);
+}
+
+.badge-info {
+  background-color: oklch(90% 0.04 240);
+  color: oklch(25% 0.08 240);
+}
+
+.dark .badge-info {
+  background-color: oklch(25% 0.06 240 / 0.5);
+  color: oklch(75% 0.06 240);
+}
+
+.badge-warning {
+  background-color: oklch(90% 0.04 60);
+  color: oklch(25% 0.08 60);
+}
+
+.dark .badge-warning {
+  background-color: oklch(25% 0.06 60 / 0.5);
+  color: oklch(75% 0.06 60);
+}
+
+.badge-purple {
+  background-color: oklch(90% 0.04 285);
+  color: oklch(25% 0.08 285);
+}
+
+.dark .badge-purple {
+  background-color: oklch(25% 0.06 285 / 0.5);
+  color: oklch(75% 0.06 285);
+}
+
+/* Text colors */
+.text-success {
+  color: oklch(45% 0.15 142);
+}
+
+.dark .text-success {
+  color: oklch(65% 0.12 142);
+}
+
+.text-info {
+  color: oklch(45% 0.15 240);
+}
+
+.dark .text-info {
+  color: oklch(65% 0.12 240);
+}
+
+.text-warning {
+  color: oklch(45% 0.15 60);
+}
+
+.dark .text-warning {
+  color: oklch(65% 0.12 60);
+}
+
+.text-purple {
+  color: oklch(45% 0.15 285);
+}
+
+.dark .text-purple {
+  color: oklch(65% 0.12 285);
 }
