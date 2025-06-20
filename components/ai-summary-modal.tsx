@@ -9,9 +9,10 @@ import { aiSummaries } from "@/lib/mock-data"
 
 interface AISummaryModalProps {
   page: keyof typeof aiSummaries
+  data?: Record<string, any>
 }
 
-export function AISummaryModal({ page }: AISummaryModalProps) {
+export function AISummaryModal({ page, data }: AISummaryModalProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [summary, setSummary] = useState("")
   const [isOpen, setIsOpen] = useState(false)
@@ -20,7 +21,15 @@ export function AISummaryModal({ page }: AISummaryModalProps) {
     setIsLoading(true)
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 2000))
-    setSummary(aiSummaries[page])
+    const response = await fetch("https://n8n.syedd.com/webhook-test/700a27a2-9d04-4673-8fcd-61d1de5f7d2d",{
+      method: "POST",
+      body: JSON.stringify({
+        data,
+        page,
+      }),
+    })
+    const {summary} = await response.json()
+    setSummary(summary)
     setIsLoading(false)
   }
 

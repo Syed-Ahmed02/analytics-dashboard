@@ -13,7 +13,7 @@ import { useState } from "react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 
-// Define the video performance type
+
 type VideoPerformance = {
   video_id: string
   title: string
@@ -28,7 +28,77 @@ type VideoPerformance = {
   roi_per_lead: string
 }
 
-// Define columns for the YouTube videos table
+
+function calculateVideoPerformance(
+  videos: typeof youtubeVideos,
+  attributionData: typeof leadAttribution
+): VideoPerformance[] {
+  const videoPerformance = videos
+    .map(video => {
+      const attribution = attributionData.find(attr => attr.video_id === video.video_id)
+      const totalRevenue = attribution?.total_revenue || 0
+      const viewCount = video.viewCount
+      const callsBooked = attribution?.calls_booked || 0
+
+      const roiPerView = viewCount > 0 ? (totalRevenue / viewCount).toFixed(2) : "0.00"
+      const roiPerLead = callsBooked > 0 ? (totalRevenue / callsBooked).toFixed(0) : "0"
+
+      return {
+        ...video,
+        calls_booked: attribution?.calls_booked,
+        total_closes: attribution?.total_closes,
+        total_revenue: totalRevenue,
+        roi_per_view: roiPerView,
+        roi_per_lead: roiPerLead,
+      }
+    })
+    .sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0))
+
+  return videoPerformance
+}
+
+function calculateTotals(videos: typeof youtubeVideos, attributionData: typeof leadAttribution) {
+  const totalViews = videos.reduce((sum, video) => sum + video.viewCount, 0)
+  const totalLikes = videos.reduce((sum, video) => sum + video.likes, 0)
+  const totalComments = videos.reduce((sum, video) => sum + video.commentCount, 0)
+  const totalRevenue = attributionData.reduce((sum, attr) => sum + attr.total_revenue, 0)
+
+  return { totalViews, totalLikes, totalComments, totalRevenue }
+}
+
+function prepareChartData(videoPerformance: VideoPerformance[]) {
+  return videoPerformance.slice(0, 8).map(video => ({
+    title: video.title.substring(0, 25) + "...",
+    revenue: video.total_revenue || 0,
+    views: video.viewCount,
+    calls: video.calls_booked || 0,
+  }))
+}
+
+function prepareAISummaryData() {
+
+  const videoPerformance = calculateVideoPerformance(youtubeVideos, leadAttribution)
+  const { totalViews, totalLikes, totalComments, totalRevenue } = calculateTotals(youtubeVideos, leadAttribution)
+
+  return {
+    videoPerformance: videoPerformance.map(video => ({
+    title: video.title,
+    revenue: video.total_revenue || 0,
+    views: video.viewCount,
+    calls: video.calls_booked || 0, 
+    closes: video.total_closes || 0,
+    roi_per_view: video.roi_per_view,
+    roi_per_lead: video.roi_per_lead,
+    video_id: video.video_id,
+  })),
+  "Total Views": totalViews,
+  "Total Likes": totalLikes,
+  "Total Comments": totalComments,
+  "Total Revenue": totalRevenue
+  }
+}
+
+
 const columns: ColumnDef<VideoPerformance>[] = [
   {
     accessorKey: "title",
@@ -126,27 +196,10 @@ export function YoutubeStatsPage() {
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
 
-  // Combine video data with attribution data
-  const videoPerformance: VideoPerformance[] = youtubeVideos
-    .map((video) => {
-      const attribution = leadAttribution.find((attr) => attr.video_id === video.video_id)
-      return {
-        ...video,
-        calls_booked: attribution?.calls_booked,
-        total_closes: attribution?.total_closes,
-        total_revenue: attribution?.total_revenue,
-        roi_per_view: attribution ? (attribution.total_revenue / video.viewCount).toFixed(2) : "0.00",
-        roi_per_lead: attribution ? (attribution.total_revenue / attribution.calls_booked).toFixed(0) : "0",
-      }
-    })
-    .sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0))
-
-  const chartData = videoPerformance.slice(0, 8).map((video) => ({
-    title: video.title.substring(0, 25) + "...",
-    revenue: video.total_revenue || 0,
-    views: video.viewCount,
-    calls: video.calls_booked || 0,
-  }))
+  // All calculations are now in helper functions
+  const videoPerformance = calculateVideoPerformance(youtubeVideos, leadAttribution)
+  const { totalViews, totalLikes, totalComments, totalRevenue } = calculateTotals(youtubeVideos, leadAttribution)
+  const chartData = prepareChartData(videoPerformance)
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -158,7 +211,7 @@ export function YoutubeStatsPage() {
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="youtube" />
+          <AISummaryModal page="youtube" data={prepareAISummaryData()} />
         </div>
       </div>
 
@@ -170,9 +223,7 @@ export function YoutubeStatsPage() {
             <Play className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-              {youtubeVideos.reduce((sum, video) => sum + video.viewCount, 0).toLocaleString()}
-            </div>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalViews.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -182,9 +233,7 @@ export function YoutubeStatsPage() {
             <ThumbsUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-              {youtubeVideos.reduce((sum, video) => sum + video.likes, 0).toLocaleString()}
-            </div>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalLikes.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -194,9 +243,7 @@ export function YoutubeStatsPage() {
             <MessageCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-              {youtubeVideos.reduce((sum, video) => sum + video.commentCount, 0).toLocaleString()}
-            </div>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold">{totalComments.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -206,9 +253,7 @@ export function YoutubeStatsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-lg sm:text-xl lg:text-2xl font-bold">
-              ${leadAttribution.reduce((sum, attr) => sum + attr.total_revenue, 0).toLocaleString()}
-            </div>
+            <div className="text-lg sm:text-xl lg:text-2xl font-bold">${totalRevenue.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
