@@ -12,6 +12,101 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 
+function prepareAISummaryData() {
+  // Calculate overall conversion rates
+  const totalData = leadAttribution.reduce(
+    (acc, attr) => ({
+      total_views: acc.total_views + attr.total_views,
+      website_clicks: acc.website_clicks + attr.website_clicks,
+      calls_booked: acc.calls_booked + attr.calls_booked,
+      show_ups: acc.show_ups + attr.show_ups,
+      total_closes: acc.total_closes + attr.total_closes,
+      total_revenue: acc.total_revenue + attr.total_revenue,
+    }),
+    { total_views: 0, website_clicks: 0, calls_booked: 0, show_ups: 0, total_closes: 0, total_revenue: 0 },
+  )
+
+  const conversionRates = calculateConversionRates(totalData)
+
+  // Aggregate country data
+  const countryData = leadAttribution.reduce(
+    (acc, attr) => {
+      Object.entries(attr.countries).forEach(([country, count]) => {
+        acc[country] = (acc[country] || 0) + count
+      })
+      return acc
+    },
+    {} as Record<string, number>,
+  )
+
+  const countryArray = Object.entries(countryData)
+    .map(([country, count]) => ({ country, count }))
+    .sort((a, b) => b.count - a.count)
+
+  const totalVisitors = monthlyRevenue.reduce((sum, month) => sum + month.unique_website_visitors, 0)
+  const avgMonthlyVisitors = Math.round(totalVisitors / monthlyRevenue.length)
+
+  return {
+    // Key metrics
+    "Total Visitors": totalVisitors,
+    "Average Monthly Visitors": avgMonthlyVisitors,
+    "Total Revenue": totalData.total_revenue,
+    "Total Calls Booked": totalData.calls_booked,
+    "Total Show Ups": totalData.show_ups,
+    "Total Closes": totalData.total_closes,
+    
+    // Conversion rates
+    "View to Click Rate": conversionRates.view_to_click,
+    "Click to Call Rate": conversionRates.click_to_call,
+    "Call to Show Rate": conversionRates.call_to_show,
+    "Show to Close Rate": conversionRates.show_to_close,
+    
+    // Monthly trends
+    monthlyTrends: monthlyRevenue.map(month => ({
+      month: month.month,
+      visitors: month.unique_website_visitors,
+      revenue: month.total_cash_collected
+    })),
+    
+    // Country breakdown
+    countryBreakdown: countryArray.map(({ country, count }) => {
+      const percentage = ((count / countryArray.reduce((sum, item) => sum + item.count, 0)) * 100).toFixed(1)
+      return { country, leads: count, percentage }
+    }),
+    
+    // Conversion funnel data
+    conversionFunnel: [
+      {
+        stage: "Website Visitors",
+        value: totalVisitors,
+        percentage: 100,
+      },
+      {
+        stage: "Calls Booked",
+        value: totalData.calls_booked,
+        percentage: Number.parseFloat(conversionRates.click_to_call),
+      },
+      {
+        stage: "Show Ups",
+        value: totalData.show_ups,
+        percentage: Number.parseFloat(conversionRates.call_to_show),
+      },
+      {
+        stage: "Closes",
+        value: totalData.total_closes,
+        percentage: Number.parseFloat(conversionRates.show_to_close),
+      },
+    ],
+    
+    // Top performing countries
+    topCountries: countryArray.slice(0, 5).map(({ country, count }) => ({
+      country,
+      leads: count,
+      percentage: ((count / countryArray.reduce((sum, item) => sum + item.count, 0)) * 100).toFixed(1)
+    }))
+  }
+}
+
 export function WebpageStatsPage() {
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
@@ -114,7 +209,7 @@ export function WebpageStatsPage() {
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="webpage" />
+          <AISummaryModal page="webpage" data={prepareAISummaryData()} />
         </div>
       </div>
 

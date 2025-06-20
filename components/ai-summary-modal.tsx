@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Card, CardContent } from "@/components/ui/card"
@@ -20,15 +20,17 @@ export function AISummaryModal({ page, data }: AISummaryModalProps) {
   const generateSummary = async () => {
     setIsLoading(true)
     // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    const response = await fetch("https://n8n.syedd.com/webhook-test/700a27a2-9d04-4673-8fcd-61d1de5f7d2d",{
+   
+    const response = await fetch("https://n8n.syedd.com/webhook/700a27a2-9d04-4673-8fcd-61d1de5f7d2d",{
       method: "POST",
       body: JSON.stringify({
         data,
         page,
-      }),
+      }), 
     })
+    console.log(response)
     const {summary} = await response.json()
+    console.log(summary)
     setSummary(summary)
     setIsLoading(false)
   }

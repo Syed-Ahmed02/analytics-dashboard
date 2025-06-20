@@ -10,6 +10,146 @@ import { TrendingUp, TrendingDown, Eye, Phone, DollarSign, Users } from "lucide-
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useState } from "react"
 
+function prepareAISummaryData() {
+  // Calculate totals for all data
+  const totalViews = leadAttribution.reduce((sum, item) => sum + item.total_views, 0)
+  const totalWebsiteVisitors = monthlyRevenue.reduce((sum, item) => sum + item.unique_website_visitors, 0)
+  const totalCallsBooked = monthlyCalls.reduce((sum, item) => sum + item.total_booked, 0)
+  const totalRevenue = monthlyRevenue.reduce((sum, item) => sum + item.total_cash_collected, 0)
+  const totalSalesClosed = monthlyRevenue.reduce(
+    (sum, item) =>
+      sum +
+      item.high_ticket_closes.pif +
+      item.high_ticket_closes.installments +
+      item.discount_closes.pif +
+      item.discount_closes.installments,
+    0,
+  )
+
+  // Calculate conversion rates
+  const viewToWebsiteRate = ((totalWebsiteVisitors / totalViews) * 100).toFixed(2)
+  const websiteToCallRate = ((totalCallsBooked / totalWebsiteVisitors) * 100).toFixed(2)
+  const callToSaleRate = ((totalSalesClosed / totalCallsBooked) * 100).toFixed(2)
+  const overallConversionRate = ((totalSalesClosed / totalViews) * 100).toFixed(4)
+
+  // Calculate month-over-month changes
+  const latestMonth = monthlyRevenue[monthlyRevenue.length - 1]
+  const previousMonth = monthlyRevenue[monthlyRevenue.length - 2]
+  
+  const calculateChange = (current: number, previous: number) => {
+    if (previous === 0) return 0
+    return (((current - previous) / previous) * 100).toFixed(1)
+  }
+
+  const revenueChange = calculateChange(latestMonth.total_cash_collected, previousMonth.total_cash_collected)
+  const visitorsChange = calculateChange(latestMonth.unique_website_visitors, previousMonth.unique_website_visitors)
+  const callsChange = calculateChange(
+    monthlyCalls[monthlyCalls.length - 1]?.total_booked || 0,
+    monthlyCalls[monthlyCalls.length - 2]?.total_booked || 0,
+  )
+
+  // Find best performing month
+  const bestMonth = monthlyRevenue.reduce((max, month) => 
+    month.total_cash_collected > max.total_cash_collected ? month : max
+  )
+
+  // Find top performing video by revenue
+  const topVideo = leadAttribution.reduce((max, current) =>
+    current.total_revenue > max.total_revenue ? current : max,
+  )
+
+  // Calculate ROI per view for top video
+  const topVideoROI = topVideo.total_views > 0 ? (topVideo.total_revenue / topVideo.total_views).toFixed(2) : "0.00"
+
+  // Monthly trends
+  const monthlyTrends = monthlyRevenue.map(month => ({
+    month: month.month,
+    revenue: month.total_cash_collected,
+    visitors: month.unique_website_visitors,
+    calls: monthlyCalls.find(call => call.month === month.month)?.total_booked || 0,
+    sales: (month.high_ticket_closes.pif + month.high_ticket_closes.installments + 
+            month.discount_closes.pif + month.discount_closes.installments)
+  }))
+
+  // Funnel data
+  const funnelData = [
+    {
+      stage: "YouTube Views",
+      value: totalViews,
+      conversion_rate: 100,
+      drop_off: 0
+    },
+    {
+      stage: "Website Visitors", 
+      value: totalWebsiteVisitors,
+      conversion_rate: Number(viewToWebsiteRate),
+      drop_off: 100 - Number(viewToWebsiteRate)
+    },
+    {
+      stage: "Calls Booked",
+      value: totalCallsBooked,
+      conversion_rate: Number(websiteToCallRate),
+      drop_off: Number(viewToWebsiteRate) - Number(websiteToCallRate)
+    },
+    {
+      stage: "Sales Closed",
+      value: totalSalesClosed,
+      conversion_rate: Number(callToSaleRate),
+      drop_off: Number(websiteToCallRate) - Number(callToSaleRate)
+    }
+  ]
+
+  return {
+    // Key metrics
+    "Total YouTube Views": totalViews,
+    "Total Website Visitors": totalWebsiteVisitors,
+    "Total Calls Booked": totalCallsBooked,
+    "Total Revenue": totalRevenue,
+    "Total Sales Closed": totalSalesClosed,
+    
+    // Conversion rates
+    "View to Website Rate": viewToWebsiteRate,
+    "Website to Call Rate": websiteToCallRate,
+    "Call to Sale Rate": callToSaleRate,
+    "Overall Conversion Rate": overallConversionRate,
+    
+    // Month-over-month changes
+    "Revenue Change": revenueChange,
+    "Visitors Change": visitorsChange,
+    "Calls Change": callsChange,
+    
+    // Performance highlights
+    bestMonth: {
+      month: bestMonth.month,
+      revenue: bestMonth.total_cash_collected,
+      visitors: bestMonth.unique_website_visitors
+    },
+    
+    topVideo: {
+      video_id: topVideo.video_id,
+      revenue: topVideo.total_revenue,
+      views: topVideo.total_views,
+      calls_booked: topVideo.calls_booked,
+      roi_per_view: topVideoROI
+    },
+    
+    // Monthly trends
+    monthlyTrends: monthlyTrends,
+    
+    // Funnel analysis
+    funnelData: funnelData,
+    
+    // Performance insights
+    performanceInsights: {
+      avg_monthly_revenue: (totalRevenue / monthlyRevenue.length).toFixed(0),
+      avg_monthly_visitors: (totalWebsiteVisitors / monthlyRevenue.length).toFixed(0),
+      avg_monthly_calls: (totalCallsBooked / monthlyCalls.length).toFixed(0),
+      revenue_per_visitor: (totalRevenue / totalWebsiteVisitors).toFixed(2),
+      revenue_per_call: (totalRevenue / totalCallsBooked).toFixed(0)
+    }
+  }
+}
+
 export function HomePage() {
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
@@ -107,7 +247,7 @@ export function HomePage() {
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="home" />
+          <AISummaryModal page="home" data={prepareAISummaryData()} />
         </div>
       </div>
 

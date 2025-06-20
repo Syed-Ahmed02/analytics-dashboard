@@ -13,6 +13,113 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 
+function prepareAISummaryData() {
+  // Calculate totals for all data
+  const totalRevenue = monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0)
+  const totalPIF = monthlyRevenue.reduce((sum, month) => sum + month.new_cash_collected.pif, 0)
+  const totalInstallments = monthlyRevenue.reduce((sum, month) => sum + month.new_cash_collected.installments, 0)
+  const totalHighTicketCloses = monthlyRevenue.reduce(
+    (sum, month) => sum + month.high_ticket_closes.pif + month.high_ticket_closes.installments,
+    0,
+  )
+  const totalDiscountCloses = monthlyRevenue.reduce(
+    (sum, month) => sum + month.discount_closes.pif + month.discount_closes.installments,
+    0,
+  )
+
+  // Find top performer
+  const topPerformer = leadAttribution.reduce((max, current) =>
+    current.total_revenue > max.total_revenue ? current : max,
+  )
+  const topVideo = youtubeVideos.find((video) => video.video_id === topPerformer.video_id)
+
+  // Calculate revenue percentages
+  const pifPercentage = ((totalPIF / totalRevenue) * 100).toFixed(1)
+  const installmentsPercentage = ((totalInstallments / totalRevenue) * 100).toFixed(1)
+
+  // Calculate average revenue per close
+  const totalCloses = totalHighTicketCloses + totalDiscountCloses
+  const avgRevenuePerClose = totalCloses > 0 ? (totalRevenue / totalCloses).toFixed(0) : "0"
+
+  // Monthly performance data
+  const monthlyPerformance = monthlyRevenue.map((month) => ({
+    month: month.month,
+    total_cash: month.total_cash_collected,
+    pif_revenue: month.new_cash_collected.pif,
+    installments_revenue: month.new_cash_collected.installments,
+    new_cash_total: month.new_cash_collected.pif + month.new_cash_collected.installments,
+    high_ticket_closes: month.high_ticket_closes.pif + month.high_ticket_closes.installments,
+    discount_closes: month.discount_closes.pif + month.discount_closes.installments,
+    total_closes: (month.high_ticket_closes.pif + month.high_ticket_closes.installments) + 
+                  (month.discount_closes.pif + month.discount_closes.installments)
+  }))
+
+  // Revenue breakdown for charts
+  const revenueBreakdown = [
+    { name: "PIF", value: totalPIF, percentage: pifPercentage },
+    { name: "Installments", value: totalInstallments, percentage: installmentsPercentage },
+  ]
+
+  const closesBreakdown = [
+    { name: "High Ticket", value: totalHighTicketCloses, percentage: ((totalHighTicketCloses / totalCloses) * 100).toFixed(1) },
+    { name: "Discount", value: totalDiscountCloses, percentage: ((totalDiscountCloses / totalCloses) * 100).toFixed(1) },
+  ]
+
+  return {
+    // Key metrics
+    "Total Revenue": totalRevenue,
+    "PIF Revenue": totalPIF,
+    "Installments Revenue": totalInstallments,
+    "High Ticket Closes": totalHighTicketCloses,
+    "Discount Closes": totalDiscountCloses,
+    "Total Closes": totalCloses,
+    "Average Revenue per Close": avgRevenuePerClose,
+    
+    // Percentages
+    "PIF Percentage": pifPercentage,
+    "Installments Percentage": installmentsPercentage,
+    
+    // Top performer data
+    topPerformer: {
+      video_id: topPerformer.video_id,
+      video_title: topVideo?.title || "Unknown Video",
+      revenue: topPerformer.total_revenue,
+      calls_booked: topPerformer.calls_booked,
+      total_closes: topPerformer.total_closes,
+      conversion_rate: ((topPerformer.total_closes / topPerformer.calls_booked) * 100).toFixed(1)
+    },
+    
+    // Monthly trends
+    monthlyTrends: monthlyPerformance.map(month => ({
+      month: month.month,
+      total_cash: month.total_cash,
+      pif_revenue: month.pif_revenue,
+      installments_revenue: month.installments_revenue,
+      new_cash_total: month.new_cash_total,
+      total_closes: month.total_closes,
+      avg_revenue_per_close: month.total_closes > 0 ? (month.total_cash / month.total_closes).toFixed(0) : "0"
+    })),
+    
+    // Revenue breakdown
+    revenueBreakdown: revenueBreakdown,
+    
+    // Closes breakdown
+    closesBreakdown: closesBreakdown,
+    
+    // Performance insights
+    performanceInsights: {
+      best_month: monthlyPerformance.reduce((max, month) => 
+        month.total_cash > max.total_cash ? month : max
+      ),
+      worst_month: monthlyPerformance.reduce((min, month) => 
+        month.total_cash < min.total_cash ? month : min
+      ),
+      avg_monthly_revenue: (totalRevenue / monthlyRevenue.length).toFixed(0),
+      avg_monthly_closes: (totalCloses / monthlyRevenue.length).toFixed(1)
+    }
+  }
+}
+
 export function SalesStatsPage() {
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
@@ -101,7 +208,7 @@ export function SalesStatsPage() {
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="sales" />
+          <AISummaryModal page="sales" data={prepareAISummaryData()} />
         </div>
       </div>
 
