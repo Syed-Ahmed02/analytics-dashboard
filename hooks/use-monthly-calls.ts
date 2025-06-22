@@ -1,10 +1,23 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { fetchWithCache } from '@/lib/api-cache'
 
+interface VideoSource {
+  video_id: string
+  calls_booked: number
+  accepted: number
+  show_ups: number
+  closes: number
+  revenue: number
+}
+
 interface MonthlyCall {
   month: string
-  calls: number
-  growth: number
+  total_booked: number
+  accepted: number
+  show_ups: number
+  cancelled: number
+  no_shows: number
+  video_sources: VideoSource[]
 }
 
 interface CallsResponse {
@@ -45,7 +58,27 @@ export function useMonthlyCalls() {
 
   // Memoize computed values
   const totalCalls = useMemo(() => 
-    memoizedData.reduce((sum, item) => sum + item.calls, 0), 
+    memoizedData.reduce((sum, item) => sum + item.total_booked, 0), 
+    [memoizedData]
+  )
+
+  const totalAccepted = useMemo(() => 
+    memoizedData.reduce((sum, item) => sum + item.accepted, 0), 
+    [memoizedData]
+  )
+
+  const totalShowUps = useMemo(() => 
+    memoizedData.reduce((sum, item) => sum + item.show_ups, 0), 
+    [memoizedData]
+  )
+
+  const totalCancelled = useMemo(() => 
+    memoizedData.reduce((sum, item) => sum + item.cancelled, 0), 
+    [memoizedData]
+  )
+
+  const totalNoShows = useMemo(() => 
+    memoizedData.reduce((sum, item) => sum + item.no_shows, 0), 
     [memoizedData]
   )
 
@@ -54,9 +87,14 @@ export function useMonthlyCalls() {
     [totalCalls, memoizedData.length]
   )
 
-  const averageGrowth = useMemo(() => 
-    memoizedData.length > 0 ? Math.round(memoizedData.reduce((sum, item) => sum + item.growth, 0) / memoizedData.length) : 0, 
-    [memoizedData]
+  const showUpRate = useMemo(() => 
+    totalAccepted > 0 ? Math.round((totalShowUps / totalAccepted) * 100) : 0, 
+    [totalShowUps, totalAccepted]
+  )
+
+  const cancellationRate = useMemo(() => 
+    totalCalls > 0 ? Math.round((totalCancelled / totalCalls) * 100) : 0, 
+    [totalCancelled, totalCalls]
   )
 
   useEffect(() => {
@@ -69,8 +107,13 @@ export function useMonthlyCalls() {
     error,
     source,
     totalCalls,
+    totalAccepted,
+    totalShowUps,
+    totalCancelled,
+    totalNoShows,
     averageCalls,
-    averageGrowth,
+    showUpRate,
+    cancellationRate,
     refetch: fetchData
   }
 } 
