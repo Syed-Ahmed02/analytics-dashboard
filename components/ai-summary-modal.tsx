@@ -58,7 +58,7 @@ export function AISummaryModal({ page, data }: AISummaryModalProps) {
           </DialogTitle>
         </DialogHeader>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 max-h-96 overflow-y-auto">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin mr-2" />
