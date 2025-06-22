@@ -66,19 +66,25 @@ interface YouTubeWebhookResponse {
 }
 
 function transformYouTubeData(webhookData: YouTubeWebhookResponse) {
+  // Add null checks to prevent errors
+  if (!webhookData || !webhookData.snippet || !webhookData.statistics) {
+    console.log('Invalid webhook data structure:', webhookData)
+    throw new Error('Invalid webhook data structure')
+  }
+
   return {
-    video_id: webhookData.id,
-    title: webhookData.snippet.title,
-    viewCount: parseInt(webhookData.statistics.viewCount),
-    thumbnailUrl: webhookData.snippet.thumbnails.high.url,
-    likes: parseInt(webhookData.statistics.likeCount),
-    commentCount: parseInt(webhookData.statistics.commentCount),
-    publishedAt: webhookData.snippet.publishedAt,
-    description: webhookData.snippet.description,
-    channelTitle: webhookData.snippet.channelTitle,
-    duration: webhookData.contentDetails.duration,
+    video_id: webhookData.id || 'unknown',
+    title: webhookData.snippet.title || 'Untitled',
+    viewCount: parseInt(webhookData.statistics.viewCount || '0'),
+    thumbnailUrl: webhookData.snippet.thumbnails?.high?.url || webhookData.snippet.thumbnails?.medium?.url || webhookData.snippet.thumbnails?.default?.url || '',
+    likes: parseInt(webhookData.statistics.likeCount || '0'),
+    commentCount: parseInt(webhookData.statistics.commentCount || '0'),
+    publishedAt: webhookData.snippet.publishedAt || new Date().toISOString(),
+    description: webhookData.snippet.description || '',
+    channelTitle: webhookData.snippet.channelTitle || 'Unknown Channel',
+    duration: webhookData.contentDetails?.duration || 'PT0S',
     tags: webhookData.snippet.tags || [],
-    embedHtml: webhookData.player.embedHtml
+    embedHtml: webhookData.player?.embedHtml || ''
   }
 }
 
@@ -103,11 +109,32 @@ async function fetchYouTubeData() {
       throw new Error(data.message || 'Webhook returned an error')
     }
 
-    // Transform the webhook data to match our expected format
-    const transformedData = transformYouTubeData(data)
-    
-    // Return as an array to match the expected format
-    return [transformedData]
+    // Check if the data is an array (which it should be based on the log)
+    if (Array.isArray(data)) {
+      console.log(`Processing ${data.length} videos from webhook`)
+      // Transform each video in the array
+      const transformedData = data.map(video => {
+        try {
+          return transformYouTubeData(video)
+        } catch (error) {
+          console.error('Error transforming video:', video.id, error)
+          return null
+        }
+      }).filter(Boolean) // Remove any null entries from failed transformations
+      
+      return transformedData
+    }
+
+    // Check if the data has the expected structure for a single video
+    if (data.snippet) {
+      console.log('Processing single video from webhook')
+      const transformedData = transformYouTubeData(data)
+      return [transformedData]
+    }
+
+    console.log('Response does not have expected YouTube API structure, using raw data')
+    // If it doesn't have the expected structure, return the raw data
+    return [data]
   } catch (error) {
     console.error('Error fetching YouTube data from webhook:', error)
     throw error

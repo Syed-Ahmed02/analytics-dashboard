@@ -1,59 +1,76 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { fetchWithCache } from '@/lib/api-cache'
 
-interface VideoSource {
-  video_id: string
-  calls_booked: number
-  accepted: number
-  show_ups: number
-  closes: number
-  revenue: number
-}
-
-interface MonthlyCallsData {
+interface MonthlyCall {
   month: string
-  total_booked: number
-  accepted: number
-  show_ups: number
-  cancelled: number
-  no_shows: number
-  video_sources: VideoSource[]
+  calls: number
+  growth: number
 }
 
-interface ApiResponse {
+interface CallsResponse {
   success: boolean
-  data: MonthlyCallsData[]
+  data: MonthlyCall[]
+  source: 'api' | 'mock'
   error?: string
 }
 
 export function useMonthlyCalls() {
-  const [data, setData] = useState<MonthlyCallsData[]>([])
+  const [data, setData] = useState<MonthlyCall[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [source, setSource] = useState<'api' | 'mock'>('mock')
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        setError(null)
-        
-        const response = await fetch('/api/kajabi/monthly-calls')
-        const result: ApiResponse = await response.json()
-        
-        if (result.success) {
-          setData(result.data)
-        } else {
-          setError(result.error || 'Failed to fetch monthly calls data')
-        }
-      } catch (err) {
-        setError('Failed to fetch monthly calls data')
-        console.error('Error fetching monthly calls:', err)
-      } finally {
-        setLoading(false)
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const response: CallsResponse = await fetchWithCache('/api/cal/monthly-calls')
+      
+      if (response.success) {
+        setData(response.data)
+        setSource(response.source)
+      } else {
+        setError(response.error || 'Failed to fetch calls data')
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred')
+    } finally {
+      setLoading(false)
     }
-
-    fetchData()
   }, [])
 
-  return { data, loading, error }
+  // Memoize the data to prevent unnecessary re-renders
+  const memoizedData = useMemo(() => data, [data])
+
+  // Memoize computed values
+  const totalCalls = useMemo(() => 
+    memoizedData.reduce((sum, item) => sum + item.calls, 0), 
+    [memoizedData]
+  )
+
+  const averageCalls = useMemo(() => 
+    memoizedData.length > 0 ? Math.round(totalCalls / memoizedData.length) : 0, 
+    [totalCalls, memoizedData.length]
+  )
+
+  const averageGrowth = useMemo(() => 
+    memoizedData.length > 0 ? Math.round(memoizedData.reduce((sum, item) => sum + item.growth, 0) / memoizedData.length) : 0, 
+    [memoizedData]
+  )
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return {
+    data: memoizedData,
+    loading,
+    error,
+    source,
+    totalCalls,
+    averageCalls,
+    averageGrowth,
+    refetch: fetchData
+  }
 } 

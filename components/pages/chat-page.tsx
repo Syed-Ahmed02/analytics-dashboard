@@ -30,93 +30,6 @@ const SUGGESTED_QUESTIONS = [
   "How are my YouTube engagement rates?",
 ]
 
-const AI_RESPONSES = {
-  "best performing video": {
-    content: `Your best performing video is "Office Tour | A Day in the Life of a Software Engineer in NYC" with 50,475 views and $95,000 in attributed revenue. That's an impressive $1.88 revenue per view! 🏆
-
-This video significantly outperformed others because it shows your personal success story and lifestyle, which builds trust and credibility with potential clients.`,
-    suggestions: [
-      "How can I create more lifestyle content?",
-      "What makes this video so effective?",
-      "Show me other high-performing videos",
-    ],
-  },
-  "revenue last month": {
-    content: `In June 2025, you generated $145,200 in total cash collected - your best month yet! 📈
-
-Breakdown:
-• PIF Revenue: $75,000 (52%)
-• Installment Revenue: $27,000 (19%)
-• Recurring Revenue: $43,200 (29%)
-
-This represents a 13% increase from May. Your AI Agency Setup packages are really taking off!`,
-    suggestions: ["What drove this growth?", "How can I maintain this momentum?", "Show me the revenue trend"],
-  },
-  "country leads": {
-    content: `The United States generates the most leads by far:
-
-🇺🇸 United States: 154 leads (62%)
-🇨🇦 Canada: 45 leads (18%)
-🇬🇧 United Kingdom: 26 leads (10%)
-🇦🇺 Australia: 9 leads (4%)
-🇩🇪 Germany: 6 leads (2%)
-
-Your content resonates strongly with English-speaking markets, especially North America.`,
-    suggestions: [
-      "How can I expand to other markets?",
-      "What's the conversion rate by country?",
-      "Should I create localized content?",
-    ],
-  },
-  "conversion rate": {
-    content: `Your overall funnel conversion rates are exceptional:
-
-📊 **Conversion Funnel:**
-• View to Click: 3.6% (Industry avg: 2-3%)
-• Click to Call: 2.4% (Industry avg: 1-2%)
-• Call to Show: 86% (Industry avg: 70-80%)
-• Show to Close: 28% (Industry avg: 15-25%)
-
-Your show-up rate and close rate are particularly impressive! This indicates strong lead qualification and sales skills.`,
-    suggestions: [
-      "How can I improve my view-to-click rate?",
-      "What's my average deal size?",
-      "Show me conversion by traffic source",
-    ],
-  },
-  "top revenue sources": {
-    content: `Your top 3 revenue sources are:
-
-🥇 **Office Tour Video**: $95,000 (23% of total)
-🥈 **AI Developer Roadmap**: $82,500 (20% of total)  
-🥉 **AI Agency Setup Program**: $72,000 (17% of total)
-
-These three sources account for 60% of your total revenue. The pattern shows that personal branding content + educational roadmaps perform best.`,
-    suggestions: [
-      "How can I scale these successful formats?",
-      "What other personal content should I create?",
-      "Show me the full revenue breakdown",
-    ],
-  },
-  "youtube engagement": {
-    content: `Your YouTube engagement rates are strong:
-
-📈 **Engagement Metrics:**
-• Average Views: 14,157 per video
-• Average Likes: 658 per video (4.6% engagement)
-• Average Comments: 41 per video
-• Total Channel Views: 212,355
-• Total Likes: 9,873
-
-Your "Office Tour" and "AI Roadmap" videos have the highest engagement rates. Personal story content gets 2x more engagement than pure tutorials.`,
-    suggestions: [
-      "Which videos should I promote more?",
-      "How can I increase my comment engagement?",
-      "What content gets the most likes?",
-    ],
-  },
-}
-
 export function ChatPage() {
   const { data: monthlyRevenue, loading: revenueLoading, error: revenueError } = useMonthlyRevenue()
   const { data: youtubeVideos, loading: youtubeLoading, error: youtubeError } = useYouTubeData()
@@ -150,38 +63,71 @@ export function ChatPage() {
     scrollToBottom()
   }, [messages])
 
-  const generateResponse = (userMessage: string): { content: string; suggestions?: string[] } => {
-    const message = userMessage.toLowerCase()
+  const generateResponse = async (userMessage: string): Promise<{ content: string; suggestions?: string[] }> => {
+    // Send ALL queries to n8n webhook for consistent AI responses
+    try {
+      // Prepare context data
+      const context = {
+        monthlyRevenue: monthlyRevenue,
+        youtubeVideos: youtubeVideos,
+        totalRevenue: monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0),
+        totalViews: youtubeVideos.reduce((sum, video) => sum + video.viewCount, 0),
+        totalLikes: youtubeVideos.reduce((sum, video) => sum + video.likes, 0),
+        totalComments: youtubeVideos.reduce((sum, video) => sum + video.commentCount, 0),
+        bestMonth: monthlyRevenue.reduce((max, month) => 
+          month.total_cash_collected > max.total_cash_collected ? month : max
+        )
+      }
 
-    // Simple keyword matching for demo purposes
-    if (message.includes("best") && (message.includes("video") || message.includes("youtube"))) {
-      return AI_RESPONSES["best performing video"]
-    }
-    if (message.includes("revenue") && (message.includes("last month") || message.includes("june"))) {
-      return AI_RESPONSES["revenue last month"]
-    }
-    if (message.includes("country") || message.includes("countries")) {
-      return AI_RESPONSES["country leads"]
-    }
-    if (message.includes("conversion") && message.includes("rate")) {
-      return AI_RESPONSES["conversion rate"]
-    }
-    if (message.includes("top") && message.includes("revenue")) {
-      return AI_RESPONSES["top revenue sources"]
-    }
-    if (message.includes("youtube") && message.includes("engagement")) {
-      return AI_RESPONSES["youtube engagement"]
-    }
+      const response = await fetch('https://n8n.syedd.com/webhook/15830a50-4fc2-4d5d-ac3c-199288681927', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query: userMessage,
+          context: context
+        }),
+      })
 
-    // Default response with data insights
-    const totalRevenue = monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0)
-    const bestMonth = monthlyRevenue.reduce((max, month) => 
-      month.total_cash_collected > max.total_cash_collected ? month : max
-    )
-    const totalViews = youtubeVideos.reduce((sum, video) => sum + video.viewCount, 0)
-    
-    return {
-      content: `I can help you analyze your coaching business data! Here are some key insights:
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data = await response.json()
+      
+      // Extract the response from the nested structure
+      let aiResponse = "I'm sorry, I couldn't process your request at the moment."
+      
+      if (data.response) {
+        // Handle the nested structure: $json.message.content.response
+        if (typeof data.response === 'string' && data.response.includes('{{ $json.message.content.response }}')) {
+          // If it's still the template string, try to extract from the actual response
+          aiResponse = data.message?.content?.response || data.response
+        } else {
+          aiResponse = data.response
+        }
+      } else if (data.message?.content?.response) {
+        aiResponse = data.message.content.response
+      }
+      
+      // Return the AI response from the webhook
+      return {
+        content: aiResponse,
+        suggestions: data.suggestions || SUGGESTED_QUESTIONS.slice(0, 3)
+      }
+    } catch (error) {
+      console.error('Error calling AI webhook:', error)
+      
+      // Fallback response with data insights
+      const totalRevenue = monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0)
+      const bestMonth = monthlyRevenue.reduce((max, month) => 
+        month.total_cash_collected > max.total_cash_collected ? month : max
+      )
+      const totalViews = youtubeVideos.reduce((sum, video) => sum + video.viewCount, 0)
+      
+      return {
+        content: `I apologize, but I'm having trouble processing your question right now. Here are some key insights from your data:
 
 📊 **Quick Stats:**
 • Total Revenue: $${totalRevenue.toLocaleString()} (last ${monthlyRevenue.length} months)
@@ -189,8 +135,9 @@ export function ChatPage() {
 • Total YouTube Views: ${totalViews.toLocaleString()}
 • Conversion Rate: 28% (show to close)
 
-What specific aspect would you like to explore?`,
-      suggestions: SUGGESTED_QUESTIONS.slice(0, 4),
+Try asking one of the suggested questions below, or try rephrasing your question.`,
+        suggestions: SUGGESTED_QUESTIONS.slice(0, 4),
+      }
     }
   }
 
@@ -208,9 +155,8 @@ What specific aspect would you like to explore?`,
     setInput("")
     setIsLoading(true)
 
-    // Simulate AI processing delay
-    setTimeout(() => {
-      const response = generateResponse(input)
+    try {
+      const response = await generateResponse(input)
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         content: response.content,
@@ -220,8 +166,19 @@ What specific aspect would you like to explore?`,
       }
 
       setMessages((prev) => [...prev, aiMessage])
+    } catch (error) {
+      console.error('Error generating response:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "I'm sorry, I encountered an error while processing your request. Please try again.",
+        role: "assistant",
+        timestamp: new Date(),
+        suggestions: SUGGESTED_QUESTIONS.slice(0, 3),
+      }
+      setMessages((prev) => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const handleSuggestionClick = (suggestion: string) => {
