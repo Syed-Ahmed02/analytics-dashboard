@@ -10,7 +10,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Send, Bot, User, Sparkles, TrendingUp, Youtube, Globe, DollarSign } from "lucide-react"
-import { monthlyRevenue, youtubeVideos } from "@/lib/mock-data"
+import { useMonthlyRevenue } from "@/hooks/use-monthly-revenue"
+import { useYouTubeData } from "@/hooks/use-youtube-data"
 
 interface Message {
   id: string
@@ -117,6 +118,8 @@ Your "Office Tour" and "AI Roadmap" videos have the highest engagement rates. Pe
 }
 
 export function ChatPage() {
+  const { data: monthlyRevenue, loading: revenueLoading, error: revenueError } = useMonthlyRevenue()
+  const { data: youtubeVideos, loading: youtubeLoading, error: youtubeError } = useYouTubeData()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -130,6 +133,9 @@ export function ChatPage() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  const loading = revenueLoading || youtubeLoading
+  const error = revenueError || youtubeError
 
   const scrollToBottom = () => {
     if (scrollAreaRef.current) {
@@ -168,13 +174,19 @@ export function ChatPage() {
     }
 
     // Default response with data insights
+    const totalRevenue = monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0)
+    const bestMonth = monthlyRevenue.reduce((max, month) => 
+      month.total_cash_collected > max.total_cash_collected ? month : max
+    )
+    const totalViews = youtubeVideos.reduce((sum, video) => sum + video.viewCount, 0)
+    
     return {
       content: `I can help you analyze your coaching business data! Here are some key insights:
 
 📊 **Quick Stats:**
-• Total Revenue: $412,400 (last 4 months)
-• Best Month: June 2025 ($145,200)
-• Top Video: Office Tour (50K views, $95K revenue)
+• Total Revenue: $${totalRevenue.toLocaleString()} (last ${monthlyRevenue.length} months)
+• Best Month: ${new Date(bestMonth.month + "-01").toLocaleDateString("en-US", { month: "long", year: "numeric" })} ($${bestMonth.total_cash_collected.toLocaleString()})
+• Total YouTube Views: ${totalViews.toLocaleString()}
 • Conversion Rate: 28% (show to close)
 
 What specific aspect would you like to explore?`,
@@ -221,6 +233,55 @@ What specific aspect would you like to explore?`,
       e.preventDefault()
       handleSend()
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4 sm:space-y-6 h-full">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Chat with AI</h1>
+            <Badge variant="secondary" className="badge-purple">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Beta
+            </Badge>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardContent className="p-3 sm:p-4">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded mb-2" />
+                <div className="h-6 w-16 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4 sm:space-y-6 h-full">
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Chat with AI</h1>
+            <Badge variant="secondary" className="badge-purple">
+              <Sparkles className="h-3 w-3 mr-1" />
+              Beta
+            </Badge>
+          </div>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <p>Error loading chat data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -285,7 +346,7 @@ What specific aspect would you like to explore?`,
       </div>
 
       {/* Chat Interface - Tailwind v4 Optimized */}
-      <Card className="flex-1 flex flex-col h-[500px] sm:h-[600px] lg:h-[650px] bg-card border-border">
+      <Card className="flex-1 flex flex-col min-h-0">
         <CardHeader className="pb-3 sm:pb-4 border-b border-border">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-purple" />
@@ -308,7 +369,7 @@ What specific aspect would you like to explore?`,
                     </Avatar>
                   )}
 
-                  <div className={`max-w-[85%] sm:max-w-[80%] ${message.role === "user" ? "order-first" : ""}`}>
+                  <div className="flex-1 max-w-[80%] sm:max-w-[70%]">
                     <div
                       className={`rounded-lg px-3 py-2 sm:px-4 ${
                         message.role === "user"
@@ -372,7 +433,7 @@ What specific aspect would you like to explore?`,
           </ScrollArea>
 
           {/* Input Area - Tailwind v4 Optimized */}
-          <div className="border-t border-border p-3 sm:p-4 bg-card">
+          <div className="border-t border-border p-3 sm:p-4">
             <div className="flex gap-2">
               <Input
                 value={input}

@@ -3,7 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AISummaryModal } from "@/components/ai-summary-modal"
 import { MonthToggle } from "@/components/month-toggle"
-import { monthlyRevenue, leadAttribution, youtubeVideos } from "@/lib/mock-data"
+import { leadAttribution, youtubeVideos } from "@/lib/mock-data"
+import { useMonthlyRevenue } from "@/hooks/use-monthly-revenue"
 import { DollarSign, TrendingUp, CreditCard, Target } from "lucide-react"
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 import { useState } from "react"
@@ -13,7 +14,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 
-function prepareAISummaryData() {
+function prepareAISummaryData(monthlyRevenue: any[]) {
   // Calculate totals for all data
   const totalRevenue = monthlyRevenue.reduce((sum, month) => sum + month.total_cash_collected, 0)
   const totalPIF = monthlyRevenue.reduce((sum, month) => sum + month.new_cash_collected.pif, 0)
@@ -121,8 +122,49 @@ function prepareAISummaryData() {
 }
 
 export function SalesStatsPage() {
+  const { data: monthlyRevenue, loading, error } = useMonthlyRevenue()
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Sales Performance</h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Sales Performance</h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <p>Error loading sales data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const filteredData =
     selectedMonth === "all" ? monthlyRevenue : monthlyRevenue.filter((item) => item.month === selectedMonth)
@@ -208,7 +250,7 @@ export function SalesStatsPage() {
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="sales" data={prepareAISummaryData()} />
+          <AISummaryModal page="sales" data={prepareAISummaryData(monthlyRevenue)} />
         </div>
       </div>
 
@@ -235,7 +277,6 @@ export function SalesStatsPage() {
           </CardContent>
         </Card>
 
-        {/* Additional Cards for Installments Revenue, High Ticket Closes, and Discount Closes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Installments Revenue</CardTitle>
@@ -269,7 +310,7 @@ export function SalesStatsPage() {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <h2 className="text-lg font-bold mb-4">Revenue Breakdown</h2>
           <ResponsiveContainer width="100%" height={300}>

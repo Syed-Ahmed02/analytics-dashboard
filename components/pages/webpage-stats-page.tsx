@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { AISummaryModal } from "@/components/ai-summary-modal"
 import { MonthToggle } from "@/components/month-toggle"
-import { monthlyRevenue, leadAttribution, calculateConversionRates } from "@/lib/mock-data"
+import { leadAttribution, calculateConversionRates } from "@/lib/mock-data"
+import { useMonthlyRevenue } from "@/hooks/use-monthly-revenue"
 import { Globe, Users, Phone, Target } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useState } from "react"
@@ -12,7 +13,7 @@ import type { ColumnDef } from "@tanstack/react-table"
 import { DataTable } from "@/components/data-table/data-table"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 
-function prepareAISummaryData() {
+function prepareAISummaryData(monthlyRevenue: any[]) {
   // Calculate overall conversion rates
   const totalData = leadAttribution.reduce(
     (acc, attr) => ({
@@ -108,8 +109,49 @@ function prepareAISummaryData() {
 }
 
 export function WebpageStatsPage() {
+  const { data: monthlyRevenue, loading, error } = useMonthlyRevenue()
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Website Performance</h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Website Performance</h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <p>Error loading website data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const filteredData =
     selectedMonth === "all" ? monthlyRevenue : monthlyRevenue.filter((item) => item.month === selectedMonth)
@@ -144,10 +186,37 @@ export function WebpageStatsPage() {
     .map(([country, count]) => ({ country, count }))
     .sort((a, b) => b.count - a.count)
 
-  const funnelData = [
+  const totalVisitors = filteredData.reduce((sum, month) => sum + month.unique_website_visitors, 0)
+  const totalEmailOpens = filteredData.reduce((sum, month) => sum + month.email_opens, 0)
+  const totalEmailClicks = filteredData.reduce((sum, month) => sum + month.email_clicks, 0)
+
+  const metrics = [
+    {
+      title: "Website Visitors",
+      value: totalVisitors.toLocaleString(),
+      icon: Users,
+    },
+    {
+      title: "Email Opens",
+      value: totalEmailOpens.toLocaleString(),
+      icon: Globe,
+    },
+    {
+      title: "Email Clicks",
+      value: totalEmailClicks.toLocaleString(),
+      icon: Target,
+    },
+    {
+      title: "Calls Booked",
+      value: totalData.calls_booked.toLocaleString(),
+      icon: Phone,
+    },
+  ]
+
+  const conversionData = [
     {
       stage: "Website Visitors",
-      value: filteredData.reduce((sum, month) => sum + month.unique_website_visitors, 0),
+      value: totalVisitors,
       percentage: 100,
     },
     {
@@ -167,8 +236,14 @@ export function WebpageStatsPage() {
     },
   ]
 
-  // Define columns for the country table
-  const countryColumns: ColumnDef<{ country: string; count: number; percentage: string }>[] = [
+  const chartData = filteredData.map((month) => ({
+    month: new Date(month.month + "-01").toLocaleDateString("en-US", { month: "short" }),
+    visitors: month.unique_website_visitors,
+    revenue: month.total_cash_collected,
+  }))
+
+  // Define columns for country data
+  const countryColumns: ColumnDef<any>[] = [
     {
       accessorKey: "country",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Country" />,
@@ -176,169 +251,116 @@ export function WebpageStatsPage() {
     },
     {
       accessorKey: "count",
-      header: ({ column }) => <DataTableColumnHeader column={column} title="Total Leads" />,
-      cell: ({ row }) => <div className="font-mono">{row.getValue("count")}</div>,
+      header: ({ column }) => <DataTableColumnHeader column={column} title="Leads" />,
+      cell: ({ row }) => <div className="font-mono">{row.getValue<number>("count").toLocaleString()}</div>,
     },
     {
       accessorKey: "percentage",
       header: ({ column }) => <DataTableColumnHeader column={column} title="Percentage" />,
-      cell: ({ row }) => <div className="font-mono">{row.getValue("percentage")}%</div>,
-    },
-    {
-      id: "distribution",
-      header: "Distribution",
-      cell: ({ row }) => {
-        const percentage = Number.parseFloat(row.getValue("percentage"))
-        return <Progress value={percentage} className="h-2 w-24" />
-      },
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <Progress value={row.getValue<number>("percentage")} className="w-20" />
+          <span className="text-sm text-muted-foreground">{row.getValue<number>("percentage").toFixed(1)}%</span>
+        </div>
+      ),
     },
   ]
-
-  const countryTableData = countryArray.map(({ country, count }) => {
-    const percentage = ((count / countryArray.reduce((sum, item) => sum + item.count, 0)) * 100).toFixed(1)
-    return { country, count, percentage }
-  })
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">Website Analytics</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Website Performance</h1>
         <div className="flex flex-col sm:flex-row gap-4">
           <MonthToggle
             selectedMonth={selectedMonth}
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="webpage" data={prepareAISummaryData()} />
+          <AISummaryModal page="webpage" data={prepareAISummaryData(monthlyRevenue)} />
         </div>
       </div>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Visitors</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">
-              {filteredData.reduce((sum, month) => sum + month.unique_website_visitors, 0).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Monthly Visitors</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">
-              {Math.round(
-                filteredData.reduce((sum, month) => sum + month.unique_website_visitors, 0) / filteredData.length,
-              ).toLocaleString()}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Click to Call Rate</CardTitle>
-            <Phone className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{conversionRates.click_to_call}%</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overall Conversion</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{conversionRates.show_to_close}%</div>
-          </CardContent>
-        </Card>
+        {metrics.map((metric, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+              <metric.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">{metric.value}</div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Visitor Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Website Visitor Trends</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={filteredData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tick={{ fontSize: 12 }} angle={-45} textAnchor="end" height={60} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(value) => [Number(value).toLocaleString(), "Visitors"]} />
-              <Line type="monotone" dataKey="unique_website_visitors" stroke="#8884d8" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
-
-      {/* Conversion Funnel */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Visitor Trends</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }}
+                  />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--color-muted-foreground)" }} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "var(--color-card)",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "6px",
+                      color: "var(--color-card-foreground)",
+                    }}
+                  />
+                  <Line type="monotone" dataKey="visitors" stroke="var(--color-primary)" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>Conversion Funnel</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {funnelData.map((stage, index) => (
+              {conversionData.map((stage, index) => (
                 <div key={stage.stage} className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">{stage.stage}</span>
-                    <span className="text-sm text-muted-foreground">
+                  <div className="flex justify-between text-sm">
+                    <span className="font-medium">{stage.stage}</span>
+                    <span className="text-muted-foreground">
                       {stage.value.toLocaleString()} ({stage.percentage.toFixed(1)}%)
                     </span>
                   </div>
-                  <Progress value={stage.percentage} className="h-2" />
+                  <Progress value={stage.percentage} className="w-full" />
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Conversion Rates Breakdown</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                <span className="font-medium">View to Click</span>
-                <span className="text-lg font-bold text-blue-600">{conversionRates.view_to_click}%</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                <span className="font-medium">Click to Call</span>
-                <span className="text-lg font-bold text-green-600">{conversionRates.click_to_call}%</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-yellow-50 rounded-lg">
-                <span className="font-medium">Call to Show</span>
-                <span className="text-lg font-bold text-yellow-600">{conversionRates.call_to_show}%</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-                <span className="font-medium">Show to Close</span>
-                <span className="text-lg font-bold text-purple-600">{conversionRates.show_to_close}%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Country Breakdown */}
+      {/* Country Data Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Lead Sources by Country</CardTitle>
+          <CardTitle>Traffic by Country</CardTitle>
         </CardHeader>
         <CardContent>
           <DataTable
             columns={countryColumns}
-            data={countryTableData}
+            data={countryArray.map(({ country, count }) => ({
+              country,
+              count,
+              percentage: (count / countryArray.reduce((sum, item) => sum + item.count, 0)) * 100,
+            }))}
             searchKey="country"
             searchPlaceholder="Search countries..."
           />

@@ -5,12 +5,14 @@ import { Badge } from "@/components/ui/badge"
 import { AISummaryModal } from "@/components/ai-summary-modal"
 import { FunnelChart } from "@/components/funnel-chart"
 import { MonthToggle } from "@/components/month-toggle"
-import { monthlyRevenue, monthlyCalls, leadAttribution } from "@/lib/mock-data"
-import { TrendingUp, TrendingDown, Eye, Phone, DollarSign, Users } from "lucide-react"
+import { leadAttribution } from "@/lib/mock-data"
+import { useMonthlyRevenue } from "@/hooks/use-monthly-revenue"
+import { useMonthlyCalls } from "@/hooks/use-monthly-calls"
+import { TrendingUp, TrendingDown, Eye, Phone, DollarSign, Users, Play } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { useState } from "react"
 
-function prepareAISummaryData() {
+function prepareAISummaryData(monthlyRevenue: any[], monthlyCalls: any[]) {
   // Calculate totals for all data
   const totalViews = leadAttribution.reduce((sum, item) => sum + item.total_views, 0)
   const totalWebsiteVisitors = monthlyRevenue.reduce((sum, item) => sum + item.unique_website_visitors, 0)
@@ -151,8 +153,53 @@ function prepareAISummaryData() {
 }
 
 export function HomePage() {
+  const { data: monthlyRevenue, loading: revenueLoading, error: revenueError } = useMonthlyRevenue()
+  const { data: monthlyCalls, loading: callsLoading, error: callsError } = useMonthlyCalls()
   const availableMonths = ["all", ...monthlyRevenue.map((item) => item.month)]
   const [selectedMonth, setSelectedMonth] = useState("all")
+
+  const loading = revenueLoading || callsLoading
+  const error = revenueError || callsError
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 w-20 bg-muted animate-pulse rounded" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center text-muted-foreground">
+              <p>Error loading dashboard data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const filteredData =
     selectedMonth === "all" ? monthlyRevenue : monthlyRevenue.filter((item) => item.month === selectedMonth)
@@ -238,49 +285,43 @@ export function HomePage() {
   ]
 
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Funnel Overview</h1>
-        <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Dashboard</h1>
+        <div className="flex flex-col sm:flex-row gap-4">
           <MonthToggle
             selectedMonth={selectedMonth}
             onMonthChange={setSelectedMonth}
             availableMonths={availableMonths}
           />
-          <AISummaryModal page="home" data={prepareAISummaryData()} />
+          <AISummaryModal page="home" data={prepareAISummaryData(monthlyRevenue, monthlyCalls)} />
         </div>
       </div>
 
-      {/* Key Metrics - Responsive Grid */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 sm:gap-4 lg:gap-6">
-        {metrics.map((metric, index) => {
-          const isPositive = Number(metric.change) > 0
-          const Icon = metric.icon
-          return (
-            <Card key={index} className="min-w-0 transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs sm:text-sm font-medium truncate pr-2">{metric.title}</CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              </CardHeader>
-              <CardContent className="space-y-1">
-                <div className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{metric.value}</div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  {isPositive ? (
-                    <TrendingUp className="h-3 w-3 text-success shrink-0" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3 text-destructive shrink-0" />
-                  )}
-                  <span className={`${isPositive ? "text-success" : "text-destructive"} truncate`}>
-                    {metric.change}% from last month
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {metrics.map((metric, index) => (
+          <Card key={index}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{metric.title}</CardTitle>
+              <metric.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-xl sm:text-2xl font-bold">{metric.value}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                {Number(metric.change) > 0 ? (
+                  <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
+                ) : (
+                  <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+                )}
+                {metric.change}% from last month
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Charts - Responsive Layout */}
+      {/* Charts Section */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
         <Card className="min-w-0">
           <CardHeader>
@@ -322,39 +363,84 @@ export function HomePage() {
       </div>
 
       {/* Performance Highlights - Responsive Cards */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Performance Highlights</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="text-center p-3 sm:p-4 bg-success-subtle rounded-lg">
-              <Badge variant="secondary" className="mb-2 badge-success">
-                Record High
-              </Badge>
-              <p className="text-xs sm:text-sm text-muted-foreground">Best Month</p>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold">June 2025</p>
-              <p className="text-xs sm:text-sm">$145K Total Revenue</p>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">Top Performing Video</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {leadAttribution
+                .sort((a, b) => b.total_revenue - a.total_revenue)
+                .slice(0, 1)
+                .map((attr) => {
+                  const video = leadAttribution.find((v) => v.video_id === attr.video_id)
+                  return (
+                    <div key={attr.video_id} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Play className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Video {attr.video_id}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {attr.calls_booked} calls booked
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold">${attr.total_revenue.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {((attr.total_closes / attr.calls_booked) * 100).toFixed(1)}% close rate
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
-            <div className="text-center p-3 sm:p-4 bg-info-subtle rounded-lg">
-              <Badge variant="secondary" className="mb-2 badge-info">
-                Top Video
-              </Badge>
-              <p className="text-xs sm:text-sm text-muted-foreground">Highest ROI</p>
-              <p className="text-sm sm:text-lg font-bold truncate">Office Tour</p>
-              <p className="text-xs sm:text-sm">$1.88 per view</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base sm:text-lg">Monthly Performance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {monthlyRevenue
+                .sort((a, b) => b.total_cash_collected - a.total_cash_collected)
+                .slice(0, 3)
+                .map((month) => (
+                  <div key={month.month} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {new Date(month.month + "-01").toLocaleDateString("en-US", {
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {month.unique_website_visitors.toLocaleString()} visitors
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-bold">${month.total_cash_collected.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(
+                          month.high_ticket_closes.pif +
+                          month.high_ticket_closes.installments +
+                          month.discount_closes.pif +
+                          month.discount_closes.installments
+                        ).toLocaleString()}{" "}
+                        closes
+                      </p>
+                    </div>
+                  </div>
+                ))}
             </div>
-            <div className="text-center p-3 sm:p-4 bg-purple-subtle rounded-lg sm:col-span-2 lg:col-span-1">
-              <Badge variant="secondary" className="mb-2 badge-purple">
-                Conversion
-              </Badge>
-              <p className="text-xs sm:text-sm text-muted-foreground">View to Call Rate</p>
-              <p className="text-lg sm:text-xl lg:text-2xl font-bold">0.82%</p>
-              <p className="text-xs sm:text-sm">Exceptional performance</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
